@@ -13,6 +13,7 @@
 #
 # 1. Connect the LAN port of the FH3X to your local network.
 #    Set a static IP via the Pylontech app (default: 172.22.184.210).
+#    (wifi works too!)
 #
 # 2. Copy this file to your HA config directory:
 #       /config/pylon_fh3x_modbus.yaml
@@ -20,7 +21,7 @@
 # 3. Add the following line to your configuration.yaml:
 #       modbus: !include pylon_fh3x_modbus.yaml
 #
-# 4. Set the correct IP address on line 43 (host: field).
+# 4. Set the correct IP address on line 106 (host: field).
 #
 # 5. Restart Home Assistant.
 #
