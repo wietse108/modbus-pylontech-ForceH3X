@@ -1,0 +1,618 @@
+# =============================================================================
+# Pylontech Force H3X – Home Assistant Modbus TCP Integration
+# =============================================================================
+#
+# Tested with:   Pylontech Force H3X hybrid inverter
+# HA version:    2024.x and above
+# Protocol:      Modbus TCP (port 502)
+# Reference:     ModBus-Protocol-Pylon-FH3X-V1.2 (2025-08-11)
+#
+# -----------------------------------------------------------------------------
+# INSTALLATION
+# -----------------------------------------------------------------------------
+#
+# 1. Connect the LAN port of the FH3X to your local network.
+#    Set a static IP via the Pylontech app (default: 172.22.184.210).
+#
+# 2. Copy this file to your HA config directory:
+#       /config/pylon_fh3x_modbus.yaml
+#
+# 3. Add the following line to your configuration.yaml:
+#       modbus: !include pylon_fh3x_modbus.yaml
+#
+# 4. Set the correct IP address on line 43 (host: field).
+#
+# 5. Restart Home Assistant.
+#
+# -----------------------------------------------------------------------------
+# IMPORTANT NOTES
+# -----------------------------------------------------------------------------
+#
+# - The FH3X uses Modbus FC03 (holding registers) for ALL registers,
+#   including the 30xxx range. Do NOT use input_type: input.
+#
+# - Slave 2  →  Inverter registers (30xxx read-only, 40xxx read/write)
+# - Slave 1  →  BMS registers (0x1xxx, ESS1 base address 0x1400)
+#
+# - Register addresses are used as-is from the Pylontech documentation
+#   (1-based, no offset subtraction needed).
+#
+# - 32-bit power values (int32) are big-endian, no word swap needed.
+#
+# - Energy totals (kWh) are stored as float32 directly in kWh.
+#
+# - The `delay: 30` setting prevents HA from hanging at boot while the
+#   inverter is not yet reachable.
+#
+# - If you see transaction ID mismatch errors in the logs, increase
+#   message_wait_milliseconds (currently 100ms).
+#
+# -----------------------------------------------------------------------------
+# AVAILABLE ENTITIES AFTER SETUP
+# -----------------------------------------------------------------------------
+#
+# Sensors (read-only):
+#   sensor.fh3x_inverter_state
+#   sensor.fh3x_pv1_voltage / current
+#   sensor.fh3x_pv2_voltage / current
+#   sensor.fh3x_pv3_voltage / current
+#   sensor.fh3x_pv_total_power
+#   sensor.fh3x_pv_total_energy
+#   sensor.fh3x_grid_voltage_r / s / t
+#   sensor.fh3x_grid_current_r / s / t
+#   sensor.fh3x_grid_frequency
+#   sensor.fh3x_grid_total_power      (positive = import, negative = export)
+#   sensor.fh3x_ac_total_power
+#   sensor.fh3x_total_grid_import
+#   sensor.fh3x_total_grid_export
+#   sensor.fh3x_battery_status
+#   sensor.fh3x_battery_power         (positive = discharge, negative = charge)
+#   sensor.fh3x_battery_voltage
+#   sensor.fh3x_battery_current
+#   sensor.fh3x_battery_soc
+#   sensor.fh3x_total_battery_charged
+#   sensor.fh3x_total_battery_discharged
+#   sensor.fh3x_inverter_temperature
+#   sensor.fh3x_fault_code
+#   sensor.fh3x_warning_code
+#   sensor.fh3x_bms_soc
+#   sensor.fh3x_bms_voltage
+#   sensor.fh3x_bms_temperature
+#   sensor.fh3x_bms_soh
+#   sensor.fh3x_bms_cell_voltage_max / min
+#   sensor.fh3x_bms_cycle_count
+#
+# Controls (read/write):
+#   select.fh3x_ems_mode               (Self-Consumption / Backup / Off-Grid /
+#                                        Feed-in Priority / User Mode / PN-Customer)
+#   number.fh3x_charge_discharge_power (only active in User Mode, unit: 0.1% of rated power)
+#
+# -----------------------------------------------------------------------------
+# ENERGY DASHBOARD
+# -----------------------------------------------------------------------------
+#
+# Go to Settings → Dashboards → Energy and configure:
+#   Grid consumption:    sensor.fh3x_total_grid_import
+#   Grid return:         sensor.fh3x_total_grid_export
+#   Solar production:    sensor.fh3x_pv_total_energy
+#   Battery charged:     sensor.fh3x_total_battery_charged
+#   Battery discharged:  sensor.fh3x_total_battery_discharged
+#
+# =============================================================================
+
+- name: pylon_fh3x
+  type: tcp
+  host: 192.168.1.XXX          # <-- Set your FH3X IP address here
+  port: 502
+  timeout: 3
+  delay: 30
+  retry_on_empty: true
+  close_comm_on_error: true
+  message_wait_milliseconds: 100
+
+  sensors:
+
+    # -------------------------------------------------------------------------
+    # Inverter Status
+    # -------------------------------------------------------------------------
+
+    - name: "FH3X Inverter State"
+      unique_id: "pylon_fh3x_inverter_state"
+      slave: 2
+      address: 30115
+      input_type: holding
+      data_type: uint16
+      scan_interval: 15
+      # 0=Wait, 1=Normal, 2=Fault, 3=Permanent Fault, 4=Updating
+
+    # -------------------------------------------------------------------------
+    # PV Input
+    # -------------------------------------------------------------------------
+
+    - name: "FH3X PV1 Voltage"
+      unique_id: "pylon_fh3x_pv1_voltage"
+      slave: 2
+      address: 30119
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X PV1 Current"
+      unique_id: "pylon_fh3x_pv1_current"
+      slave: 2
+      address: 30120
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X PV2 Voltage"
+      unique_id: "pylon_fh3x_pv2_voltage"
+      slave: 2
+      address: 30121
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X PV2 Current"
+      unique_id: "pylon_fh3x_pv2_current"
+      slave: 2
+      address: 30122
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X PV3 Voltage"
+      unique_id: "pylon_fh3x_pv3_voltage"
+      slave: 2
+      address: 30123
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X PV3 Current"
+      unique_id: "pylon_fh3x_pv3_current"
+      slave: 2
+      address: 30124
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X PV Total Power"
+      unique_id: "pylon_fh3x_pv_total_power"
+      slave: 2
+      address: 30127
+      input_type: holding
+      data_type: int32
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X PV Total Energy"
+      unique_id: "pylon_fh3x_pv_total_energy"
+      slave: 2
+      address: 30129
+      input_type: holding
+      data_type: float32
+      precision: 1
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      scan_interval: 60
+
+    # -------------------------------------------------------------------------
+    # Grid
+    # -------------------------------------------------------------------------
+
+    - name: "FH3X Grid Voltage R"
+      unique_id: "pylon_fh3x_grid_voltage_r"
+      slave: 2
+      address: 30131
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X Grid Voltage S"
+      unique_id: "pylon_fh3x_grid_voltage_s"
+      slave: 2
+      address: 30133
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X Grid Voltage T"
+      unique_id: "pylon_fh3x_grid_voltage_t"
+      slave: 2
+      address: 30135
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X Grid Current R"
+      unique_id: "pylon_fh3x_grid_current_r"
+      slave: 2
+      address: 30132
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X Grid Current S"
+      unique_id: "pylon_fh3x_grid_current_s"
+      slave: 2
+      address: 30134
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X Grid Current T"
+      unique_id: "pylon_fh3x_grid_current_t"
+      slave: 2
+      address: 30136
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X Grid Frequency"
+      unique_id: "pylon_fh3x_grid_frequency"
+      slave: 2
+      address: 30140
+      input_type: holding
+      data_type: uint16
+      scale: 0.01
+      precision: 2
+      unit_of_measurement: "Hz"
+      device_class: frequency
+      state_class: measurement
+      scan_interval: 10
+
+    - name: "FH3X Grid Total Power"
+      unique_id: "pylon_fh3x_grid_total_power"
+      slave: 2
+      address: 30108
+      input_type: holding
+      data_type: int32
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      scan_interval: 5
+      # Positive = import from grid, negative = export to grid
+
+    - name: "FH3X AC Total Power"
+      unique_id: "pylon_fh3x_ac_total_power"
+      slave: 2
+      address: 30100
+      input_type: holding
+      data_type: int32
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X Total Grid Import"
+      unique_id: "pylon_fh3x_total_grid_import"
+      slave: 2
+      address: 30156
+      input_type: holding
+      data_type: float32
+      precision: 1
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      scan_interval: 60
+
+    - name: "FH3X Total Grid Export"
+      unique_id: "pylon_fh3x_total_grid_export"
+      slave: 2
+      address: 30158
+      input_type: holding
+      data_type: float32
+      precision: 1
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      scan_interval: 60
+
+    # -------------------------------------------------------------------------
+    # Battery (inverter side)
+    # -------------------------------------------------------------------------
+
+    - name: "FH3X Battery Status"
+      unique_id: "pylon_fh3x_battery_status"
+      slave: 2
+      address: 30161
+      input_type: holding
+      data_type: uint16
+      scan_interval: 15
+      # 0=Sleep, 1=Charging, 2=Discharging
+
+    - name: "FH3X Battery Power"
+      unique_id: "pylon_fh3x_battery_power"
+      slave: 2
+      address: 30162
+      input_type: holding
+      data_type: int32
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      scan_interval: 5
+      # Positive = discharging, negative = charging
+
+    - name: "FH3X Battery Voltage"
+      unique_id: "pylon_fh3x_battery_voltage"
+      slave: 2
+      address: 30164
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X Battery Current"
+      unique_id: "pylon_fh3x_battery_current"
+      slave: 2
+      address: 30165
+      input_type: holding
+      data_type: int16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "A"
+      device_class: current
+      state_class: measurement
+      scan_interval: 5
+      # Positive = discharging, negative = charging
+
+    - name: "FH3X Battery SOC"
+      unique_id: "pylon_fh3x_battery_soc"
+      slave: 2
+      address: 30182
+      input_type: holding
+      data_type: uint16
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      scan_interval: 10
+
+    - name: "FH3X Total Battery Charged"
+      unique_id: "pylon_fh3x_total_battery_charged"
+      slave: 2
+      address: 30174
+      input_type: holding
+      data_type: float32
+      precision: 1
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      scan_interval: 60
+
+    - name: "FH3X Total Battery Discharged"
+      unique_id: "pylon_fh3x_total_battery_discharged"
+      slave: 2
+      address: 30176
+      input_type: holding
+      data_type: float32
+      precision: 1
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      scan_interval: 60
+
+    # -------------------------------------------------------------------------
+    # Inverter Temperature & Fault Codes
+    # -------------------------------------------------------------------------
+
+    - name: "FH3X Inverter Temperature"
+      unique_id: "pylon_fh3x_inverter_temperature"
+      slave: 2
+      address: 30146
+      input_type: holding
+      data_type: int16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      scan_interval: 30
+
+    - name: "FH3X Fault Code"
+      unique_id: "pylon_fh3x_fault_code"
+      slave: 2
+      address: 30148
+      input_type: holding
+      data_type: uint32
+      scan_interval: 30
+      # See Appendix VIII of Pylontech Modbus documentation for bit meanings
+
+    - name: "FH3X Warning Code"
+      unique_id: "pylon_fh3x_warning_code"
+      slave: 2
+      address: 30150
+      input_type: holding
+      data_type: uint32
+      scan_interval: 30
+      # See Appendix IX of Pylontech Modbus documentation for bit meanings
+
+    # -------------------------------------------------------------------------
+    # BMS (Battery Management System) – Slave 1
+    # Base address: 0x1400 (ESS1). For ESS2, use the next base address.
+    # Note: BMS registers use document addresses directly (no offset).
+    # -------------------------------------------------------------------------
+
+    - name: "FH3X BMS SOC"
+      unique_id: "pylon_fh3x_bms_soc"
+      slave: 1
+      address: 0x1407
+      input_type: holding
+      data_type: uint16
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      scan_interval: 10
+
+    - name: "FH3X BMS Voltage"
+      unique_id: "pylon_fh3x_bms_voltage"
+      slave: 1
+      address: 0x1403
+      input_type: holding
+      data_type: uint16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 5
+
+    - name: "FH3X BMS Temperature"
+      unique_id: "pylon_fh3x_bms_temperature"
+      slave: 1
+      address: 0x1406
+      input_type: holding
+      data_type: int16
+      scale: 0.1
+      precision: 1
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      scan_interval: 30
+
+    - name: "FH3X BMS SOH"
+      unique_id: "pylon_fh3x_bms_soh"
+      slave: 1
+      address: 0x1420
+      input_type: holding
+      data_type: uint16
+      unit_of_measurement: "%"
+      state_class: measurement
+      scan_interval: 60
+
+    - name: "FH3X BMS Cell Voltage Max"
+      unique_id: "pylon_fh3x_bms_cell_voltage_max"
+      slave: 1
+      address: 0x1410
+      input_type: holding
+      data_type: uint16
+      scale: 0.001
+      precision: 3
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 30
+
+    - name: "FH3X BMS Cell Voltage Min"
+      unique_id: "pylon_fh3x_bms_cell_voltage_min"
+      slave: 1
+      address: 0x1411
+      input_type: holding
+      data_type: uint16
+      scale: 0.001
+      precision: 3
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      scan_interval: 30
+
+    - name: "FH3X BMS Cycle Count"
+      unique_id: "pylon_fh3x_bms_cycle_count"
+      slave: 1
+      address: 0x1408
+      input_type: holding
+      data_type: uint16
+      state_class: total_increasing
+      scan_interval: 60
+
+  # ---------------------------------------------------------------------------
+  # EMS Mode Select (read/write)
+  # ---------------------------------------------------------------------------
+
+  selects:
+    - name: "FH3X EMS Mode"
+      unique_id: "pylon_fh3x_ems_mode"
+      slave: 2
+      address: 40907
+      scan_interval: 30
+      options:
+        - { option: "Self-Consumption", value: 0 }
+        - { option: "Backup",           value: 1 }
+        - { option: "Off-Grid",         value: 2 }
+        - { option: "Feed-in Priority", value: 3 }
+        - { option: "User Mode",        value: 4 }
+        - { option: "PN-Customer",      value: 5 }
+
+  # ---------------------------------------------------------------------------
+  # Charge / Discharge Power (read/write, only active in User Mode)
+  # Unit: 0.1% of rated inverter power
+  # Positive = discharge, negative = charge
+  # ---------------------------------------------------------------------------
+
+  numbers:
+    - name: "FH3X Charge Discharge Power"
+      unique_id: "pylon_fh3x_charge_discharge_power"
+      slave: 2
+      address: 40901
+      data_type: int16
+      min_value: -1000
+      max_value: 1000
+      step: 1
+      scan_interval: 30
