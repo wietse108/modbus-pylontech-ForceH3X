@@ -1,143 +1,78 @@
-# Pylontech Force H3X – Home Assistant Modbus Integration
+# Pylontech Force H3X Integration for Home Assistant
 
-A Home Assistant Modbus TCP integration for the **Pylontech Force H3X** hybrid inverter, based on the official Pylontech Modbus protocol documentation (V1.2, 2025-08-11).
+![HACS Custom](https://img.shields.io/badge/HACS-Custom_Repository-orange.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-0.1.0-blue.svg?style=for-the-badge)
+![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=for-the-badge)
 
-> Developed and tested by a real Force H3X owner. Contributions welcome.
+A fully native, UI-configurable Home Assistant custom integration for the **Pylontech Force H3X** inverter and BMS system. 
 
----
-
-## Features
-
-- Real-time PV power per string (3 inputs)
-- Grid power, voltage and current per phase (3-phase)
-- Battery SOC, power, voltage, current
-- BMS data: SOH, cell voltages, temperature, cycle count
-- Lifetime energy totals: PV production, grid import/export, battery charged/discharged
-- EMS mode control (Self-Consumption, Backup, Off-Grid, Feed-in Priority, User Mode)
-- Charge/discharge power setpoint (User Mode)
-- Full compatibility with the HA **Energy Dashboard**
+Say goodbye to complex, manual Modbus YAML configurations! This integration connects directly to your inverter over Modbus TCP, utilizing smart chunk-reading to poll dozens of registers efficiently without overloading the inverter's WiFi dongle.
 
 ---
 
-## Requirements
+## ✨ Features
 
-- Home Assistant 2024.x or newer
-- Pylontech Force H3X inverter with LAN port connected to your local network
-- No Solarman dongle required – direct Modbus TCP connection
+- **UI Config Flow:** Set up your inverter in seconds via the Home Assistant integrations page. No YAML required!
+- **Smart Chunk Polling:** Reads all required data from both the Inverter (Slave 2) and the BMS (Slave 1) in highly optimized, delay-spaced blocks to prevent Modbus timeouts.
+- **Auto-Discovery:** Automatically creates and groups all sensors under a single Device in your dashboard.
+- **Energy Dashboard Ready:** All energy/power sensors are configured with the correct `state_class` and `device_class` to work out-of-the-box with the Home Assistant Energy Dashboard.
+- **Resilient Connection:** Built-in auto-reconnect and error handling.
 
----
+## 📊 Included Sensors
 
-## Installation
+This integration pulls comprehensive data from both the Inverter and the internal Battery Management System (BMS):
 
-### 1. Set a static IP on the inverter
-
-Use the Pylontech app to assign a fixed IP address to the FH3X LAN port.  
-Default factory IP: `172.22.184.210`, port `502`.
-
-It is strongly recommended to either set a static IP in the app or reserve the IP via your router's DHCP settings.
-
-### 2. Copy the config file
-
-Copy `pylon_fh3x_modbus.yaml` to your HA config directory:
-
-```
-/config/pylon_fh3x_modbus.yaml
-```
-
-### 3. Edit the IP address
-
-Open the file and set the correct IP address on the `host:` line:
-
-```yaml
-host: 192.168.1.XXX   # replace with your inverter's IP
-```
-
-### 4. Add to configuration.yaml
-
-```yaml
-modbus: !include pylon_fh3x_modbus.yaml
-```
-
-### 5. Restart Home Assistant
-
-After restarting, all entities will appear under the `pylon_fh3x` device.
+* **🌞 Solar (PV):** Voltage, Current, and Power for PV1, PV2, and PV3, plus Total PV Energy.
+* **⚡ Grid & AC:** Grid Import/Export, AC Total Power, Load Power, Phase Voltages (R/S/T), AC Frequency, and Total Grid Energy.
+* **🔋 Battery (Inverter perspective):** Charge/Discharge Power, Voltage, Current, SOC, and Total Charge/Discharge Energy.
+* **🧠 BMS (Internal):** Cell Voltage Max/Min, BMS Temperature, BMS SOC, State of Health (SOH), and total battery cycles.
+* **🛠️ Status:** Inverter Status, Battery Status, and internal temperatures.
 
 ---
 
-## Energy Dashboard Setup
+## 🚀 Installation
 
-Go to **Settings → Dashboards → Energy** and configure:
+### Option 1: Via HACS (Recommended)
+This integration is easily installable via the [Home Assistant Community Store (HACS)](https://hacs.xyz/).
 
-| Field | Entity |
-|---|---|
-| Grid consumption | `sensor.fh3x_total_grid_import` |
-| Grid return | `sensor.fh3x_total_grid_export` |
-| Solar production | `sensor.fh3x_pv_total_energy` |
-| Battery charged | `sensor.fh3x_total_battery_charged` |
-| Battery discharged | `sensor.fh3x_total_battery_discharged` |
+1. Open Home Assistant and navigate to **HACS** > **Integrations**.
+2. Click the three dots (`...`) in the top right corner and select **Custom repositories**.
+3. Paste the URL of this GitHub repository.
+4. Select **Integration** as the category and click **Add**.
+5. Close the popup, search for **Pylontech Force H3X** in HACS, and click **Download**.
+6. **Restart Home Assistant.**
 
----
-
-## Technical Details
-
-### Why `input_type: holding` for 30xxx registers?
-
-The FH3X uses Modbus **function code 03** (FC03, holding registers) for all registers, including the 30xxx range. Using `input_type: input` (FC04) will return errors.
-
-### Why no `swap: word` for 32-bit values?
-
-The FH3X transmits 32-bit values in big-endian byte order (high word first), which is the Modbus standard. HA's `swap: word` would reverse the words and produce incorrect values.
-
-### Why `float32` for energy totals?
-
-The inverter stores lifetime energy totals (kWh) as IEEE 754 float32 values directly in engineering units. No scaling is needed.
-
-### Slave addresses
-
-| Slave | Content |
-|---|---|
-| 1 | BMS registers (`0x1400` base address for ESS1) |
-| 2 | Inverter registers (30xxx read-only, 40xxx read/write) |
+### Option 2: Manual Installation
+1. Download the latest release from this repository.
+2. Copy the `custom_components/pylon_fh3x` folder into your Home Assistant `custom_components` directory.
+3. **Restart Home Assistant.**
 
 ---
 
-## Troubleshooting
+## ⚙️ Configuration
 
-**"Failed to connect"**  
-→ Check the IP address and make sure the LAN cable is connected. The inverter must be powered on.
+1. In Home Assistant, go to **Settings** > **Devices & Services**.
+2. Click the **+ Add Integration** button in the bottom right.
+3. Search for **Pylontech Force H3X**.
+4. Enter the **IP Address** of your inverter and the **Port** (default is `502`).
+5. Click **Submit**. Your sensors will appear immediately!
 
-**Transaction ID mismatch errors in logs**  
-→ Increase `message_wait_milliseconds` (e.g. to `200` or `500`).
-
-**Sensors show `unavailable` after HA restart**  
-→ The `delay: 30` setting waits 30 seconds before polling. This is intentional to prevent boot hangs while the network is not yet ready.
-
-**BMS sensors show `unavailable`**  
-→ BMS registers (slave 1) are only available when the battery is actively communicating. If the battery is in sleep mode they may not respond.
-
-**Energy totals not updating**  
-→ These sensors have `scan_interval: 60`. Wait at least one minute after startup.
+> **⚠️ Important Notice regarding Modbus TCP:** > Modbus TCP usually allows only **one active connection at a time**. If you have an old YAML Modbus configuration in your `configuration.yaml` or another script reading from the inverter, you MUST disable/remove it and restart Home Assistant before adding this integration. Otherwise, the connection will be refused.
 
 ---
 
-## Fault & Warning Code Reference
+## 🔮 Roadmap
+- [x] Read Inverter Holding Registers (Power, Voltage, Energy)
+- [x] Read BMS Registers (Cell voltages, Temperatures, SOH)
+- [ ] Add `switch` and `number` platforms to enable writing to the inverter (e.g., changing work modes, setting charge limits).
 
-The `FH3X Fault Code` and `FH3X Warning Code` sensors return bitmask values.  
-See **Appendix VIII** and **Appendix IX** of the Pylontech FH3X Modbus Protocol documentation for the full bit definitions (MCU fault, relay fault, grid missing, BMS communication fail, etc.).
+## 🐛 Troubleshooting & Support
+If the integration fails to connect, check your Home Assistant logs (`home-assistant.log`). 
+Common issues:
+- `Connection refused`: Another device or script is already connected to the inverter's Modbus port.
+- `Timeout`: Poor WiFi signal to the inverter dongle.
 
----
-
-## Contributing
-
-If you find register errors, have additional registers to add, or test on a different firmware version, please open an issue or pull request.
-
-Known gaps / things to verify:
-- Grid power per phase (30186/30188/30190) — may require firmware with parallel mode enabled
-- EPS/backup output registers (30172+)
-- Second ESS battery (ESS2 base address TBD)
+Feel free to open an issue on this repository if you encounter any bugs!
 
 ---
-
-## License
-
-MIT License — free to use, modify and share.
+*Disclaimer: This is a community-built integration and is not officially affiliated with or endorsed by Pylontech.*
