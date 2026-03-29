@@ -1,12 +1,12 @@
 {
-  "domain": "pylon_fh3x",
-  "name": "Pylontech Force H3X",
+  "domain": "HA-pylontech-force-H3X",
+  "name": "HA-pylontech-force-H3X",
   "codeowners": ["@Wietse108"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/wietse108/pylon_fh3x",
+  "documentation": "https://github.com/wietse108/HA-pylontech-force-H3X",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/wietse108/pylon_fh3x/issues",
+  "issue_tracker": "https://github.com/wietse108/HA-pylontech-force-H3X/issues",
   "requirements": ["pymodbus>=3.11.2"],
   "version": "0.1.0"
 }
