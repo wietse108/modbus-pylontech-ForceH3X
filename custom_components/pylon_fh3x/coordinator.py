@@ -115,8 +115,11 @@ class PylontechCoordinator(DataUpdateCoordinator):
                 data["ac_frequency"] = get_16bit_uint(r_grid_v, 9) * 0.01
 
             # Temperature (30146)
-            r_temp = await self.safe_read(30146, 1, 2)
-            if r_temp: data["inverter_temperature"] = get_16bit_int(r_temp, 0) * 0.1
+            r_temp = await self.safe_read(30146, 2, 2)
+            if r_temp: 
+                data["inverter_temperature"] = get_16bit_int(r_temp, 0) * 0.1
+                data["heatsink_temperature"] = get_16bit_int(r_temp, 1) * 0.1
+
 
             # Grid Energy In/Out (30156 t/m 30159)
             r_grid_e = await self.safe_read(30156, 4, 2)
@@ -134,7 +137,7 @@ class PylontechCoordinator(DataUpdateCoordinator):
 
             # Load Power (30172)
             r_load = await self.safe_read(30172, 2, 2)
-            if r_load: data["load_power"] = get_32bit_int(r_load, 0)
+            if r_load: data["eps_power"] = get_32bit_int(r_load, 0)
 
             # Battery Energy (30174 t/m 30177)
             r_batt_e = await self.safe_read(30174, 4, 2)
@@ -147,6 +150,21 @@ class PylontechCoordinator(DataUpdateCoordinator):
             if r_soc:
                 data["battery_soc"] = get_16bit_uint(r_soc, 0)
 
+
+            # =========================================================
+            # SLAVE 2 (OMVORMER) - EMS Settings (Voor de schuifbalken)
+            # =========================================================
+            r_ems = await self.safe_read(40902, 7, 2)
+            if r_ems:
+                # 40901 is S16 (Signed), dus get_16bit_int gebruiken!
+                data["charge_discharge_power"] = get_16bit_int(r_ems, 0)
+                
+                # De rest is U16 (Unsigned)
+                data["charge_limit_soc"] = get_16bit_uint(r_ems, 0) #40902
+                data["discharge_limit_soc"] = get_16bit_uint(r_ems, 1) #40903
+                data["ems_mode"] = str(get_16bit_uint(r_ems, 5)) #40907
+
+            
             # =========================================================
             # SLAVE 1 (BMS) - Volgens documentatie Appendix I
             # =========================================================
@@ -182,3 +200,34 @@ class PylontechCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Fout in Modbus communicatie: {err}")
         except Exception as err:
             raise UpdateFailed(f"Onverwachte fout: {err}")
+
+    async def async_write_register(self, address: int, value: int, slave: int = 2) -> bool:
+        """Schrijf een waarde naar een holding register op de omvormer."""
+        try:
+            if not self.client.connected:
+                await self.client.connect()
+
+            # Pymodbus write_register functie (gebruikt standaard Function Code 06)
+            # Voor nieuwere pymodbus versies proberen we slave, unit, en device_id af te vangen
+            try:
+                res = await self.client.write_register(address=address, value=value, slave=slave)
+            except TypeError:
+                try:
+                    res = await self.client.write_register(address=address, value=value, unit=slave)
+                except TypeError:
+                    res = await self.client.write_register(address=address, value=value, device_id=slave)
+
+            if res.isError():
+                _LOGGER.error("Fout bij het schrijven naar register %s: %s", address, res)
+                return False
+
+            _LOGGER.info("Succesvol %s geschreven naar register %s", value, address)
+            
+            # Vraag direct na het schrijven een nieuwe data-update aan, 
+            # zodat je dashboard direct de nieuwe status laat zien!
+            await self.async_request_refresh()
+            return True
+
+        except Exception as err:
+            _LOGGER.error("Onverwachte fout bij schrijven naar Modbus: %s", err)
+            return False
