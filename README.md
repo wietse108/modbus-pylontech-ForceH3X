@@ -1,4 +1,4 @@
-# Pylontech Force H3X Integration for Home Assistant via Modbus tcp
+# Pylontech Force H3X Integration for Home Assistant via Modbus TCP
 
 ![HACS Custom](https://img.shields.io/badge/HACS-Custom_Repository-orange.svg?style=for-the-badge)
 ![Version](https://img.shields.io/badge/version-0.1.0-blue.svg?style=for-the-badge)
@@ -14,19 +14,33 @@ Say goodbye to complex, manual Modbus YAML configurations! This integration conn
 
 - **UI Config Flow:** Set up your inverter in seconds via the Home Assistant integrations page. No YAML required!
 - **Smart Chunk Polling:** Reads all required data from both the Inverter (Slave 2) and the BMS (Slave 1) in highly optimized, delay-spaced blocks to prevent Modbus timeouts.
-- **Auto-Discovery:** Automatically creates and groups all sensors under a single Device in your dashboard.
+- **Interactive Controls:** Not just reading data! Set your EMS mode, charge/discharge power limits, and SOC limits directly from the Home Assistant UI.
+- **Auto-Discovery:** Automatically creates and groups all sensors and controls under a single Device in your dashboard.
 - **Energy Dashboard Ready:** All energy/power sensors are configured with the correct `state_class` and `device_class` to work out-of-the-box with the Home Assistant Energy Dashboard.
 - **Resilient Connection:** Built-in auto-reconnect and error handling.
 
-## 📊 Included Sensors
+## 📊 Included Sensors & Controls
 
-This integration pulls comprehensive data from both the Inverter and the internal Battery Management System (BMS):
+This integration pulls comprehensive data from both the Inverter and the internal Battery Management System (BMS), and allows you to control the system.
 
+**🎛️ Controls & Settings:**
+* **EMS Mode Selector:** Switch between modes like `Self-Consumption`, `Back up mode`, and `User mode`.
+* **Charge/Discharge Power Ref:** Set the exact percentage (-100% to 100%) for battery charging or discharging.
+* **SOC Limits:** Sliders for setting the `Charge Limit SOC` and `Discharge Limit SOC (EPS)`.
+
+**📡 Read-Only Sensors:**
 * **🌞 Solar (PV):** Voltage, Current, and Power for PV1, PV2, and PV3, plus Total PV Energy.
 * **⚡ Grid & AC:** Grid Import/Export, AC Total Power, Load Power, Phase Voltages (R/S/T), AC Frequency, and Total Grid Energy.
 * **🔋 Battery (Inverter perspective):** Charge/Discharge Power, Voltage, Current, SOC, and Total Charge/Discharge Energy.
 * **🧠 BMS (Internal):** Cell Voltage Max/Min, BMS Temperature, BMS SOC, State of Health (SOH), and total battery cycles.
 * **🛠️ Status:** Inverter Status, Battery Status, and internal temperatures.
+
+---
+
+## ⚠️ Important Note: Charge & Discharge Control
+
+If you want to use the **Charge/Discharge Power Ref** setting to manually force the battery to charge or discharge, **you MUST set the `EMS Mode` to `User mode`**. 
+If the system is set to any other mode (like `Self-Consumption`), the inverter's internal logic will override your command and revert the setting back to its default value!
 
 ---
 
@@ -64,7 +78,11 @@ This integration is easily installable via the [Home Assistant Community Store (
 ## 🔮 Roadmap
 - [x] Read Inverter Holding Registers (Power, Voltage, Energy)
 - [x] Read BMS Registers (Cell voltages, Temperatures, SOH)
-- [ ] Add `switch` and `number` platforms to enable writing to the inverter (e.g., changing work modes, setting charge limits).
+- [x] Add `number` and `select` platforms to enable writing to the inverter (EMS mode, SOC limits, Charge/Discharge power).
+- [ ] Add support for scheduling via Time of Use registers.
+
+## 🤝 Contributing & Help Welcome!
+This is an open-source community project, and **help is always welcome!** Whether you want to add more Modbus registers, improve the code, fix a bug, or translate the integration into more languages: feel free to fork the repository and open a Pull Request.
 
 ## 🐛 Troubleshooting & Support
 If the integration fails to connect, check your Home Assistant logs (`home-assistant.log`). 
