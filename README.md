@@ -1,4 +1,4 @@
-# Pylontech Force H3X Integration for Home Assistant
+# Pylontech Force H3X Integration for Home Assistant via Modbus tcp
 
 ![HACS Custom](https://img.shields.io/badge/HACS-Custom_Repository-orange.svg?style=for-the-badge)
 ![Version](https://img.shields.io/badge/version-0.1.0-blue.svg?style=for-the-badge)
