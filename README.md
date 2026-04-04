@@ -42,6 +42,8 @@ This integration pulls comprehensive data from both the Inverter and the interna
 If you want to use the **Charge/Discharge Power Ref** setting to manually force the battery to charge or discharge, **you MUST set the `EMS Mode` to `User mode`**. 
 If the system is set to any other mode (like `Self-Consumption`), the inverter's internal logic will override your command and revert the setting back to its default value!
 
+After the writing new settings, not all of the entities show the right value. I'm still working on that
+
 ---
 
 ## 🚀 Installation
