@@ -8,5 +8,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jouw_github_naam/pylon_fh3x/issues",
   "requirements": ["pymodbus>=3.11.2"],
-  "version": "1.1.0b0"
+  "version": "1.1.0"
 }
