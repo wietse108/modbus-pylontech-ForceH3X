@@ -12,7 +12,7 @@ from .const import DOMAIN, DEFAULT_PORT, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
-# Dit definieert de velden in het instellingen-scherm
+
 DATA_SCHEMA = vol.Schema(
     {
         vol.Required("host"): str,

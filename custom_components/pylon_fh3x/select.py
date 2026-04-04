@@ -9,7 +9,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER, MODEL
 
-# Dit vertaalt het Modbus cijfer naar leesbare tekst in Home Assistant
+# translation from numbers to modes
 EMS_MODE_OPTIONS = {
     "0": "Self-Consumption",
     "1": "Back up mode",
@@ -19,7 +19,7 @@ EMS_MODE_OPTIONS = {
     "5": "PN-Customer mode",
 }
 
-# Dit vertaalt de tekst weer terug naar een cijfer voor de omvormer
+# translation back to numbers
 EMS_MODE_OPTIONS_REVERSE = {v: int(k) for k, v in EMS_MODE_OPTIONS.items()}
 
 @dataclass

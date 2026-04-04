@@ -15,7 +15,7 @@ from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
 _LOGGER = logging.getLogger(__name__)
 
 # =========================================================
-# Helper functies voor Modbus decoding
+# Helper functions for Modbus decoding
 # =========================================================
 def get_16bit_uint(regs, idx):
     return regs[idx]
@@ -59,7 +59,7 @@ class PylontechCoordinator(DataUpdateCoordinator):
 
     async def safe_read(self, address, count, slave):
         """Voert een lees-actie uit met een verplichte rustpauze voor de omvormer."""
-        # 100ms pauze (conform jouw originele message_wait_milliseconds)
+        # 100ms pause)
         await asyncio.sleep(0.1) 
         res = await _modbus_read(self.client, address, count, slave)
         if res.isError():
@@ -76,7 +76,7 @@ class PylontechCoordinator(DataUpdateCoordinator):
             data = {}
 
             # =========================================================
-            # SLAVE 2 (OMVORMER) - In kleine, veilige blokjes zonder gaten
+            # SLAVE 2 (inverter) - 
             # =========================================================
             
             # AC & Grid Power (30100 - 30101 en 30108 - 30109)
@@ -152,7 +152,7 @@ class PylontechCoordinator(DataUpdateCoordinator):
 
 
             # =========================================================
-            # SLAVE 2 (OMVORMER) - EMS Settings (Voor de schuifbalken)
+            # SLAVE 2 (inverter) - EMS Settings 
             # =========================================================
             r_ems = await self.safe_read(40902, 7, 2)
             if r_ems:
@@ -163,6 +163,12 @@ class PylontechCoordinator(DataUpdateCoordinator):
                 data["charge_limit_soc"] = get_16bit_uint(r_ems, 0) #40902
                 data["discharge_limit_soc"] = get_16bit_uint(r_ems, 1) #40903
                 data["ems_mode"] = str(get_16bit_uint(r_ems, 5)) #40907
+
+
+            #heatpump 
+            r_hp = await self.safe_read(40848, 1, 2)
+            if r_hp:
+                data["heat_pump"] = get_16bit_uint(r_hp, 0)
 
             
             # =========================================================
