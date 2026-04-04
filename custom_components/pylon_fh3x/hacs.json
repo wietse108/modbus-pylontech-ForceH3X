@@ -1,6 +1,4 @@
 {
   "name": "Pylontech Force H3X",
-  "render_readme": true,
-  "filename": "pylon_fh3x.zip",
-  "zip_release": false
+  "render_readme": true
 }
