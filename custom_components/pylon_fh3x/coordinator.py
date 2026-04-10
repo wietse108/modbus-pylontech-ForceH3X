@@ -31,7 +31,7 @@ def get_32bit_float(regs, idx):
 
 
 async def _modbus_read(client, address, count, target_id):
-    """Wrapper om pymodbus versie-verschillen af te vangen."""
+    
     try:
         return await client.read_holding_registers(address=address, count=count, slave=target_id)
     except TypeError:
@@ -58,12 +58,12 @@ class PylontechCoordinator(DataUpdateCoordinator):
         )
 
     async def safe_read(self, address, count, slave):
-        """Voert een lees-actie uit met een verplichte rustpauze voor de omvormer."""
-        # 100ms pause)
+        
+        # 100ms pause
         await asyncio.sleep(0.1) 
         res = await _modbus_read(self.client, address, count, slave)
         if res.isError():
-            _LOGGER.warning("Fout bij lezen adres %s (Slave %s): %s", address, slave, res)
+            _LOGGER.warning("error while reading adress %s (Slave %s): %s", address, slave, res)
             return None
         return res.registers
 
@@ -90,7 +90,7 @@ class PylontechCoordinator(DataUpdateCoordinator):
             r_status = await self.safe_read(30115, 1, 2)
             if r_status: data["inverter_status"] = get_16bit_uint(r_status, 0)
 
-            # PV Spanning & Stroom (30119 t/m 30124)
+            # PV voltage & current (30119 t/m 30124)
             r_pv = await self.safe_read(30119, 6, 2)
             if r_pv:
                 data["pv1_voltage"] = get_16bit_uint(r_pv, 0) * 0.1
@@ -156,7 +156,7 @@ class PylontechCoordinator(DataUpdateCoordinator):
             # =========================================================
             r_ems = await self.safe_read(40901, 7, 2)
             if r_ems:
-                # 40901 is S16 (Signed), dus get_16bit_int gebruiken!
+                # 40901 is S16 (Signed)
                 data["charge_discharge_power"] = get_16bit_int(r_ems, 0)
                 
                 # De rest is U16 (Unsigned)
@@ -172,7 +172,7 @@ class PylontechCoordinator(DataUpdateCoordinator):
 
             
             # =========================================================
-            # SLAVE 1 (BMS) - Volgens documentatie Appendix I
+            # SLAVE 1 (BMS) 
             # =========================================================
             
             # BMS Voltage (5123 / 0x1403)
@@ -196,25 +196,25 @@ class PylontechCoordinator(DataUpdateCoordinator):
             r_bms_soh = await self.safe_read(5152, 1, 1)
             if r_bms_soh: data["bms_soh"] = get_16bit_uint(r_bms_soh, 0)
 
-            # Controleer of we überhaupt iets hebben binnengekregen
+            
             if not data:
-                raise UpdateFailed("Geen data ontvangen van omvormer. Timeout of apparaat reageert niet.")
+                raise UpdateFailed("No data received out of inverter.")
 
             return data
 
         except ModbusException as err:
-            raise UpdateFailed(f"Fout in Modbus communicatie: {err}")
+            raise UpdateFailed(f"error with modbus communication: {err}")
         except Exception as err:
-            raise UpdateFailed(f"Onverwachte fout: {err}")
+            raise UpdateFailed(f"unexpected error: {err}")
 
     async def async_write_register(self, address: int, value: int, slave: int = 2) -> bool:
-        """Schrijf een waarde naar een holding register op de omvormer."""
+        #writing registers
         try:
             if not self.client.connected:
                 await self.client.connect()
 
-            # Pymodbus write_register functie (gebruikt standaard Function Code 06)
-            # Voor nieuwere pymodbus versies proberen we slave, unit, en device_id af te vangen
+            # Pymodbus write_register function 
+            
             try:
                 res = await self.client.write_register(address=address, value=value, slave=slave)
             except TypeError:
@@ -224,16 +224,14 @@ class PylontechCoordinator(DataUpdateCoordinator):
                     res = await self.client.write_register(address=address, value=value, device_id=slave)
 
             if res.isError():
-                _LOGGER.error("Fout bij het schrijven naar register %s: %s", address, res)
+                _LOGGER.error("error whil writing to register %s: %s", address, res)
                 return False
 
-            _LOGGER.info("Succesvol %s geschreven naar register %s", value, address)
             
-            # Vraag direct na het schrijven een nieuwe data-update aan, 
-            # zodat je dashboard direct de nieuwe status laat zien!
+
             await self.async_request_refresh()
             return True
 
         except Exception as err:
-            _LOGGER.error("Onverwachte fout bij schrijven naar Modbus: %s", err)
+            _LOGGER.error("Unexpected error whil writing to: %s", err)
             return False

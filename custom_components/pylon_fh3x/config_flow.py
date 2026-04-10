@@ -25,8 +25,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
-    # Hier kunnen we later een daadwerkelijke test-verbinding toevoegen via pymodbus.
-    # Voor nu controleren we of de velden in ieder geval zijn ingevuld.
+
     if len(data["host"]) < 3:
         raise CannotConnect
 

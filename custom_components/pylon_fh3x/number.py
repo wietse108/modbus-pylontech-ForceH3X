@@ -16,10 +16,10 @@ from .const import DOMAIN, MANUFACTURER, MODEL
 
 @dataclass
 class PylontechNumberEntityDescription(NumberEntityDescription):
-    """Beschrijving van een Pylontech Number entiteit, inclusief het Modbus adres."""
+    
     register_address: int = 0
     slave_id: int = 2
-    scale: float = 1.0 # Toegevoegd voor 0.1% scaling
+    scale: float = 1.0 
 
 
 NUMBER_TYPES: tuple[PylontechNumberEntityDescription, ...] = (
@@ -34,7 +34,7 @@ NUMBER_TYPES: tuple[PylontechNumberEntityDescription, ...] = (
         native_max_value=100.0,  # +100% (max discharge)
         native_step=0.1,
         scale=0.1, # Modbus 1000 * 0.1 = 100.0%
-        mode=NumberMode.BOX, # BOX is handiger dan SLIDER voor exacte negatieve getallen
+        mode=NumberMode.BOX, # BOX is better than slider
     ),
     PylontechNumberEntityDescription(
         key="charge_limit_soc",

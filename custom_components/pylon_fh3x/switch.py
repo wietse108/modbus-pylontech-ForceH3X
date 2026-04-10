@@ -11,11 +11,11 @@ from .const import DOMAIN, MANUFACTURER, MODEL
 
 @dataclass
 class PylontechSwitchEntityDescription(SwitchEntityDescription):
-    """Beschrijving van een Pylontech Switch entiteit."""
+    """description of Pylontech Switch entity."""
     register_address: int = 0
     slave_id: int = 2
 
-# We kunnen hier makkelijk meer schakelaars toevoegen in de toekomst!
+
 SWITCH_TYPES: tuple[PylontechSwitchEntityDescription, ...] = (
     PylontechSwitchEntityDescription(
         key="heat_pump",
@@ -83,7 +83,7 @@ class PylontechSwitch(CoordinatorEntity, SwitchEntity):
             slave=self.entity_description.slave_id
         )
         if success:
-            # Update lokaal zodat de knop in de app niet terugveert
+            
             self.coordinator.data[self.entity_description.key] = 1
             self.async_write_ha_state()
 
