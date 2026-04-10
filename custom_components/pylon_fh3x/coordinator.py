@@ -127,10 +127,25 @@ class PylontechCoordinator(DataUpdateCoordinator):
                 data["total_grid_import"] = get_32bit_float(r_grid_e, 0)
                 data["total_grid_export"] = get_32bit_float(r_grid_e, 2)
 
+
+            BATTERY_STATUS_MAP = {
+                            0: "Sleep",
+                            1: "Charging",
+                            2: "Discharging",
+                            3: "Idle",
+                            4: "Standby",
+                            5: "Run",
+                            6: "Fault",
+                            7: "Offline",
+                        }
+            
             # Battery Status, Power, Voltage, Current (30161 t/m 30165)
             r_batt = await self.safe_read(30161, 5, 2)
             if r_batt:
-                data["battery_status"] = get_16bit_uint(r_batt, 0)
+
+                raw_status = get_16bit_uint(r_batt, 0)
+                data["battery_status"] = BATTERY_STATUS_MAP.get(raw_status, f"Unknown ({raw_status})")
+
                 data["battery_power"] = get_32bit_int(r_batt, 1)
                 data["battery_voltage"] = get_16bit_uint(r_batt, 3) * 0.1
                 data["battery_current"] = get_16bit_int(r_batt, 4) * 0.1
