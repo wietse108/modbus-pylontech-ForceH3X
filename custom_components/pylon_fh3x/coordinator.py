@@ -86,6 +86,11 @@ class PylontechCoordinator(DataUpdateCoordinator):
             r_grid = await self.safe_read(30108, 2, 2)
             if r_grid: data["grid_total_power"] = get_32bit_int(r_grid, 0)
 
+            #virtual sensor that combines ac power out of battery with grid power and thus get the load power.
+            if "ac_total_power" in data and "grid_total_power" in data:
+                data["load_power"] = data["ac_total_power"] + data["grid_total_power"]
+
+
             # Inverter Status (30115)
             r_status = await self.safe_read(30115, 1, 2)
             if r_status: data["inverter_status"] = get_16bit_uint(r_status, 0)
@@ -153,6 +158,8 @@ class PylontechCoordinator(DataUpdateCoordinator):
             # Load Power (30172)
             r_load = await self.safe_read(30172, 2, 2)
             if r_load: data["eps_power"] = get_32bit_int(r_load, 0)
+
+
 
             # Battery Energy (30174 t/m 30177)
             r_batt_e = await self.safe_read(30174, 4, 2)
