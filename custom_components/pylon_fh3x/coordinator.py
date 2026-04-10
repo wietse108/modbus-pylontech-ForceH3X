@@ -154,15 +154,15 @@ class PylontechCoordinator(DataUpdateCoordinator):
             # =========================================================
             # SLAVE 2 (inverter) - EMS Settings 
             # =========================================================
-            r_ems = await self.safe_read(40902, 7, 2)
+            r_ems = await self.safe_read(40901, 7, 2)
             if r_ems:
                 # 40901 is S16 (Signed), dus get_16bit_int gebruiken!
                 data["charge_discharge_power"] = get_16bit_int(r_ems, 0)
                 
                 # De rest is U16 (Unsigned)
-                data["charge_limit_soc"] = get_16bit_uint(r_ems, 0) #40902
-                data["discharge_limit_soc"] = get_16bit_uint(r_ems, 1) #40903
-                data["ems_mode"] = str(get_16bit_uint(r_ems, 5)) #40907
+                data["charge_limit_soc"] = get_16bit_uint(r_ems, 1) #40902
+                data["discharge_limit_soc"] = get_16bit_uint(r_ems, 2) #40903
+                data["ems_mode"] = str(get_16bit_uint(r_ems, 6)) #40907
 
 
             #heatpump 
