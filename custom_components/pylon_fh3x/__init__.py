@@ -17,20 +17,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Pylontech Force H3X from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    # Haal IP en Poort op uit de Config Flow
+    # Get IP and PORT from config-flow
     host = entry.data[CONF_HOST]
     port = entry.data[CONF_PORT]
 
-    # Initialiseer de Coordinator
+    # Initialize coordinator
     coordinator = PylontechCoordinator(hass, host, port)
 
-    # Voer direct een eerste fetch uit om te kijken of het werkt
+    
     await coordinator.async_config_entry_first_refresh()
 
-    # Sla de coordinator op zodat de sensors erbij kunnen
+    
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # Laad de sensor entiteiten
+    
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
@@ -39,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        # Sluit de Modbus verbinding netjes af
+        
         coordinator = hass.data[DOMAIN][entry.entry_id]
         if coordinator.client.connected:
             coordinator.client.close()
