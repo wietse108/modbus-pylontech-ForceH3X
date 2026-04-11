@@ -104,6 +104,13 @@ class PylontechCoordinator(DataUpdateCoordinator):
                 data["pv2_current"] = get_16bit_uint(r_pv, 3) * 0.1
                 data["pv3_voltage"] = get_16bit_uint(r_pv, 4) * 0.1
                 data["pv3_current"] = get_16bit_uint(r_pv, 5) * 0.1
+            
+            #virtual sensor to calculate pv1,2,3 power
+            if r_pv:
+                data["pv1_power"] = data["pv1_voltage"] * data["pv1_current"]
+                data["pv2_power"] = data["pv2_voltage"] * data["pv2_current"]
+                data["pv3_power"] = data["pv3_voltage"] * data["pv3_current"]
+
 
             # PV Power & Energy (30127 t/m 30130)
             r_pv_tot = await self.safe_read(30127, 4, 2)
