@@ -264,6 +264,9 @@ class PylontechCoordinator(DataUpdateCoordinator):
             if not self.client.connected:
                 await self.client.connect()
 
+            if value < 0:
+                value = value & 0xFFFF
+
             # Pymodbus write_register function 
             
             try:
@@ -285,4 +288,33 @@ class PylontechCoordinator(DataUpdateCoordinator):
 
         except Exception as err:
             _LOGGER.error("Unexpected error whil writing to: %s", err)
+            return False
+        
+    async def async_write_register_32bit(self, address: int, value: int, slave: int = 2) -> bool:
+        """Write a 32-bit signed value (S32) as two consecutive 16-bit registers."""
+        try:
+            if not self.client.connected:
+                await self.client.connect()
+
+            # Pack S32 into two U16 registers (big-endian)
+            packed = struct.pack('>i', value)
+            high, low = struct.unpack('>HH', packed)
+
+            try:
+                res = await self.client.write_registers(address=address, values=[high, low], slave=slave)
+            except TypeError:
+                try:
+                    res = await self.client.write_registers(address=address, values=[high, low], unit=slave)
+                except TypeError:
+                    res = await self.client.write_registers(address=address, values=[high, low], device_id=slave)
+
+            if res.isError():
+                _LOGGER.error("Error writing 32-bit register %s: %s", address, res)
+                return False
+
+            await self.async_request_refresh()
+            return True
+
+        except Exception as err:
+            _LOGGER.error("Unexpected error writing 32-bit register: %s", err)
             return False
